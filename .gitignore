@@ -1,6 +1,7 @@
 videos/
 schedule.json
 .python-version
+.idea/
 
 # Created by https://www.toptal.com/developers/gitignore/api/pycharm,qt,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=pycharm,qt,python
