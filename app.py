@@ -1,166 +1,154 @@
+import asyncio
 import datetime
 import json
 import os
 import sys
+from typing import Optional, Dict, List, Coroutine
+
 import requests
+from PyQt6 import QtGui
+
+from schedule import VideoSchedule
 from pathlib import Path
 from datetime import datetime
 
-from PyQt6.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal, pyqtSlot, QTimer, QUrl
+from qasync import QEventLoop, asyncSlot
+from PyQt6.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal, pyqtSlot, QTimer, QSize
+from PyQt6.QtGui import QResizeEvent, QIcon
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from dotenv import load_dotenv
 
-from constants import ROOT_DIR
+from constants import root_dir
+from dto import Training
 from start_dialog import StartDialog
+from utils import resource_path, video_path, periodic, file_path
 from video_player import MediaPlayer
-
-load_dotenv()
-api_url = os.getenv("API_URL")
-
-schedule = {}
+from videos import Videos
 
 
-def video_path(video_id):
-    return f'{ROOT_DIR}/videos/{video_id}.mp4'
+@asyncSlot()
+async def update_schedule(window):
+    print('update schedule')
+    schedule_task = window.loop.run_in_executor(None, VideoSchedule.update_data)
+    await schedule_task
+    window.schedule = VideoSchedule.dict_by_day
 
 
-class WorkerSignals(QObject):
-    result = pyqtSignal(str)
+@asyncSlot()
+async def download_videos(window):
+    print('download_videos')
+    download_task = window.loop.run_in_executor(None, Videos.download_all)
+    await download_task
+    window.downloaded_video = Videos.downloaded_video
 
 
-# class DownloadWorker(QRunnable):
-#     def __init__(self):
-#         super().__init__()
-#
-#     @pyqtSlot()
-#     def run(self):
-#         print("DownloadWorker launched")
-#         videos_response = requests.get(f'{api_url}/api/v1/videos')
-#         videos = json.loads(videos_response.content)
-#         for video in videos:
-#             Path(f'{ROOT_DIR}/videos').mkdir(exist_ok=True)
-#             filename = f'{video["ID"]}.mp4'
-#             if not os.path.exists(video_path(video["ID"])):
-#                 response = requests.get(f'{api_url}/upload/{filename}')
-#                 open(video_path(video["ID"]), 'wb').write(response.content)
+@asyncSlot()
+@periodic(5 * 60)
+async def periodic_update_schedule(window):
+    await update_schedule(window)
 
 
-class VideoIdSignals(QObject):
-    video_signal = pyqtSignal(int)
-
-
-class VideoWorker(QRunnable):
-    def __init__(self):
-        super().__init__()
-        self.signals = VideoIdSignals()
-
-    @pyqtSlot()
-    def run(self):
-        print("VideoWorker launched")
-        now = datetime.now()
-        for training in schedule.get(now.weekday(), []):
-            # if training['Time'] == now.strftime('%H:%M'):
-            if True:
-                self.signals.video_signal.emit(training['VideoID'])
-
-
-# class ScheduleWorker(QRunnable):
-#     def __init__(self):
-#         super().__init__()
-#
-#     @pyqtSlot()
-#     def run(self):
-#         print("ScheduleWorker launched")
-#         weekday = datetime.now().weekday()
-#         response = requests.get(f'{api_url}/api/v1/schedule/{weekday}')
-#         schedule_path = f'{ROOT_DIR}/schedule.json'
-#         if response.status_code == 200:
-#             schedule[weekday] = json.loads(response.content)
-#             with open(schedule_path, 'w') as file:
-#                 json.dump(schedule, file)
-#         else:
-#             with open(schedule_path) as file:
-#                 schedule.update(json.load(file))
-
-
-class ProcessRunnable(QRunnable):
-    def __init__(self, target, args):
-        super().__init__()
-        self.t = target
-        self.args = args
-
-    def run(self):
-        self.t(*self.args)
-
-    def start(self):
-        QThreadPool.globalInstance().start(self)
+@asyncSlot()
+@periodic(20 * 60)
+async def periodic_download_videos(window):
+    await download_videos(window)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, loop=None):
         super().__init__()
 
-        self.threadpool = QThreadPool()
+        videos_dir = resource_path('videos')
+        if not os.path.exists(videos_dir):
+            os.mkdir(videos_dir)
 
-        self.player = MediaPlayer()
+        self.window_opened = False
+        self.dialog_opened = False
 
-        self.download_videos()
-        self.check_schedule()
-        # self.check_time()
+        self.schedule: Optional[Dict[int, List[Training]]] = None
+        self.downloaded_video: Optional[Dict[int, bool]] = None
 
-    def start_dialog(self, video_id):
-        print('start_dialog\n')
-        dialog = StartDialog(video_id)
-        dialog.start_clicked.connect(lambda: self.start_video(video_id))
-        dialog.cancel_clicked.connect(lambda: dialog.close())
+        self.setWindowTitle('Гимнастика')
+        self.setWindowIcon(QIcon(resource_path('assets', 'rg_logo.ico')))
+        self.setMinimumSize(QSize(640, 480))
 
-    def start_video(self, video_id):
-        print('start_video\n')
-        self.player.new_video(video_path(video_id))
+        self.dialog: Optional[StartDialog] = None
+        self.player = MediaPlayer(self)
+
+        timer = QTimer(self)
+        timer.timeout.connect(self.start_dialog)
+        timer.start(10 * 1000)
+        self.loop = loop or asyncio.get_event_loop()
+
+        self.loop.run_until_complete(self.pass_context(update_schedule))
+
+        self.loop.run_until_complete(self.pass_context(download_videos))
+
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        self.hide()
+        self.window_opened = False
+        event.ignore()
+
+    def resizeEvent(self, event: QResizeEvent):
+        self.player.resize(event.size().width(), event.size().height())
+
+    def open_video(self, video_id):
+        self.close_dialog()
+        self.window_opened = True
+        self.showMaximized()
         self.player.showMaximized()
+        self.player.new_video(video_path(video_id))
 
-    def check_schedule(self):
-        weekday = datetime.now().weekday()
-        response = requests.get(f'{api_url}/api/v1/schedule/{weekday}')
-        schedule_path = f'{ROOT_DIR}/schedule.json'
-        if response.status_code == 200:
-            schedule[weekday] = json.loads(response.content)
-            with open(schedule_path, 'w') as file:
-                json.dump(schedule, file)
+    def close_dialog(self):
+        if self.dialog:
+            self.dialog.hide()
+
+    def start_dialog(self):
+        print('start_dialog')
+        training = self.current_loop_training()
+        if training and not self.window_opened and not self.dialog_opened:
+            dialog = StartDialog(training.VideoID)
+            dialog.center()
+            self.dialog_opened = True
+            dialog.show()
+            dialog.rejected.connect(lambda: self.close_dialog)
+            dialog.accepted.connect(lambda: self.open_video(training.VideoID))
         else:
-            with open(schedule_path) as file:
-                schedule.update(json.load(file))
+            print('no training now or video plays')
 
-    def download_videos(self):
-        videos_response = requests.get(f'{api_url}/api/v1/videos')
-        videos = json.loads(videos_response.content)
-        for video in videos:
-            Path(f'{ROOT_DIR}/videos').mkdir(exist_ok=True)
-            filename = f'{video["ID"]}.mp4'
-            if not os.path.exists(video_path(video["ID"])):
-                response = requests.get(f'{api_url}/upload/{filename}')
-                open(video_path(video["ID"]), 'wb').write(response.content)
+    async def pass_context(self, function):
+        return await function(self)
 
-    # def check_time(self):
-    #     worker = VideoWorker()
-    #     worker.signals.video_signal.connect(self.start_dialog)
-    #     self.threadpool.start(worker)
-    #     QTimer.singleShot(30 * 1000, self.check_time)
-    #
-    # def check_schedule(self):
-    #     worker = ScheduleWorker()
-    #     self.threadpool.start(worker)
-    #     QTimer.singleShot(60 * 60 * 1000, self.check_schedule)
-    #
-    # def download_video(self):
-    #     worker = DownloadWorker()
-    #     self.threadpool.start(worker)
-    #     QTimer.singleShot(30 * 60 * 1000, self.check_time)
+    def current_loop_training(self) -> Optional[Training]:
+        if self.schedule:
+            current_time = datetime.now().strftime('%H:%M')
+            day_of_week = datetime.now().weekday()
+            trainings = self.schedule.get(day_of_week, [])
+            if len(trainings) != 0:
+                training: Optional[Training] = next(
+                    iter(list(filter(lambda t: t.DayOfWeek == current_time, trainings))), None)
+                training = Training()
+                training.VideoID = 6
+                if training:
+                    if Videos.downloaded_video.get(training.VideoID):
+                        return training
+                    print(f'no {training.VideoID} video')
+                    Videos.download(training.VideoID)
+        return None
+
+
+def main():
+    app = QApplication(sys.argv)
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
+
+    window = MainWindow(loop)
+
+    with loop:
+        loop.run_forever()
+
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    window = MainWindow()
-
-    app.exec()
+    main()

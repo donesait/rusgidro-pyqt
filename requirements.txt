@@ -1,0 +1,7 @@
+schedule==1.2.0
+requests==2.31.0
+pyqt6-tools==6.4.2.3.3
+PyQt6==6.4.2
+pyinstaller==5.13.2
+qasync==0.24.0
+aiohttp==3.8.5

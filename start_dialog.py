@@ -1,9 +1,11 @@
 import os.path
 
 from PyQt6 import QtCore, QtWidgets, uic
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, QPoint
 
-from constants import ROOT_DIR
+from constants import root_dir
+from utils import resource_path
+from video_player import MediaPlayer
 
 
 class StartDialog(QtWidgets.QDialog):
@@ -12,24 +14,33 @@ class StartDialog(QtWidgets.QDialog):
 
     def __init__(self, video_id):
         super().__init__()
-        self.ui = uic.loadUi(os.path.dirname(__file__) + './ui/start-dialog.ui', self)
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.ui = uic.loadUi(resource_path('ui', 'start_dialog.ui'), self)
+        self.setWindowFlag(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlag(QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle('Гимнастика')
-        # self.video_player = video_player
         if not os.path.exists('videos'):
             os.mkdir('videos')
-        if not os.path.exists(f'{ROOT_DIR}/videos/{video_id}.mp4'):
+        if not os.path.exists(f'{root_dir}/videos/{video_id}.mp4'):
             self.close()
 
-        self.ui.cancel_button.clicked.connect(self.cancel_clicked.emit())
-        self.ui.start_button.clicked.connect(self.start_clicked.emit())
-        # self.ui.cancel_button.clicked.connect(self.close)
-        # self.ui.start_button.clicked.connect(lambda: self.run_player(f'{ROOT_DIR}/videos/{video_id}.mp4'))
+        self.ui.cancel_button.clicked.connect(self.reject)
+        self.ui.cancel_button.dragPos = QPoint()
+        self.ui.start_button.clicked.connect(self.accept)
+        self.ui.start_button.dragPos = QPoint()
 
-    # def run_player(self, video_path):
-    #     self.video_player.showMaximized()
-    #     self.video_player.new_video(video_path)
-    #     self.hide()
+    def close(self) -> bool:
+        return super().close()
+
+    def accept(self):
+        super().accept()
+
+    def reject(self):
+        super().reject()
+
+    def run_player(self, video_path):
+        video_player = MediaPlayer()
+        video_player.showMaximized()
+        video_player.new_video(video_path)
 
     def center(self):
         qr = self.frameGeometry()

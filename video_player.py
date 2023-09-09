@@ -1,9 +1,7 @@
 from PyQt6.QtCore import QUrl, Qt, QSize
-from PyQt6.QtGui import QFont
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtWidgets import QPushButton, QSlider, QVBoxLayout, QWidget, QHBoxLayout, \
-    QStatusBar, QStyle
+from PyQt6.QtWidgets import QPushButton, QSlider, QVBoxLayout, QWidget, QHBoxLayout, QStyle
 
 
 class MediaPlayer(QWidget):
@@ -49,6 +47,7 @@ class MediaPlayer(QWidget):
         self.mediaPlayer.errorChanged.connect(self.handle_error)
 
     def new_video(self, video_path):
+        self.mediaPlayer.stop()
         self.mediaPlayer.setSource(QUrl.fromLocalFile(video_path))
         self.play_button.setEnabled(True)
         self.play()
@@ -78,4 +77,3 @@ class MediaPlayer(QWidget):
 
     def handle_error(self):
         self.play_button.setEnabled(False)
-        self.status_bar.showMessage("Error: " + self.mediaPlayer.errorString())
