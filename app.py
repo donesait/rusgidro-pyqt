@@ -3,15 +3,15 @@ import os
 import sys
 from typing import Optional, Dict, List
 
-from PyQt6 import QtGui
+from PyQt5 import QtGui
 
 from schedule import VideoSchedule
 from datetime import datetime, timedelta
 
 from qasync import QEventLoop, asyncSlot
-from PyQt6.QtCore import QTimer, QSize
-from PyQt6.QtGui import QResizeEvent, QIcon
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import QTimer, QSize
+from PyQt5.QtGui import QResizeEvent, QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from dto import Training
 from start_dialog import StartDialog
@@ -73,10 +73,10 @@ class MainWindow(QMainWindow):
         self.loop.run_until_complete(self.pass_context(periodic_download_videos))
 
     def closeEvent(self, event: QtGui.QCloseEvent):
-        self.hide_stop()
+        self.close()
         event.ignore()
 
-    def hide_stop(self):
+    def close(self):
         self.player.stop()
         self.hide()
         self.window_opened = False
