@@ -7,12 +7,6 @@ class Dto:
         pass
 
 
-def json_list(obj_list: List[Dto]):
-    result = []
-    for obj in obj_list:
-        result.append(obj.to_json())
-
-
 class Training(Dto):
     def __init__(self):
         self.ID: int = 0

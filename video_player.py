@@ -7,7 +7,8 @@ from PyQt6.QtWidgets import QPushButton, QSlider, QVBoxLayout, QWidget, QHBoxLay
 class MediaPlayer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.parent = parent
+        self.is_started = False
         self.mediaPlayer = QMediaPlayer()
         self.audio_output = QAudioOutput()
 
@@ -47,16 +48,21 @@ class MediaPlayer(QWidget):
         self.mediaPlayer.errorChanged.connect(self.handle_error)
 
     def new_video(self, video_path):
+        print(f'new video {video_path}')
         self.mediaPlayer.stop()
         self.mediaPlayer.setSource(QUrl.fromLocalFile(video_path))
         self.play_button.setEnabled(True)
         self.play()
+        self.is_started = True
 
     def play(self):
         if self.mediaPlayer.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.mediaPlayer.pause()
         else:
             self.mediaPlayer.play()
+
+    def stop(self):
+        self.mediaPlayer.stop()
 
     def media_state_changed(self, state):
         if self.mediaPlayer.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
@@ -65,6 +71,11 @@ class MediaPlayer(QWidget):
         else:
             self.play_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+
+        if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia and self.is_started:
+            print('end reached')
+            self.is_started = False
+            self.parent.hide_stop()
 
     def position_changed(self, position):
         self.position_slider.setValue(position)

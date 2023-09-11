@@ -1,7 +1,7 @@
 import getpass
 import json
 import os
-from typing import List, Type
+from typing import List
 
 import requests
 from dotenv import load_dotenv

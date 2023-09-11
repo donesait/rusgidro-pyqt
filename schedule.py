@@ -4,7 +4,7 @@ from typing import List, Dict
 
 from api import Api
 from constants import root_dir
-from dto import Training, json_list
+from dto import Training
 
 
 class VideoSchedule:
@@ -39,6 +39,5 @@ class VideoSchedule:
             with open(VideoSchedule._schedule_path, 'w') as file:
                 dict_to_write = {}
                 for day, trainings in VideoSchedule.dict_by_day.items():
-                    dict_to_write[day] = json_list(trainings)
-
+                    dict_to_write[day] = [obj.to_json() for obj in trainings]
                 json.dump(dict_to_write, file)
