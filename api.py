@@ -10,7 +10,7 @@ from dto import Training, Video, StatType
 from utils import list_of_objects_from_list, file_path
 
 load_dotenv()
-api_url = os.getenv("API_URL")
+api_url = 'http://10.101.104.29:8083'#os.getenv("API_URL")
 
 
 class Api:
@@ -35,6 +35,7 @@ class Api:
     @staticmethod
     def download(filename: str):
         response = requests.get(f'{api_url}/upload/{filename}')
+        print(f'{api_url}/upload/{filename}')
         open(file_path(filename), 'wb').write(response.content)
 
     @staticmethod

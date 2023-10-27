@@ -6,11 +6,11 @@ from typing import TypeVar, Type, List
 from constants import root_dir
 
 
-def periodic(period):
+def periodic(period, loop):
     def scheduler(func):
         async def wrapper(*args, **kwargs):
             while True:
-                asyncio.create_task(func(*args, **kwargs))
+                loop.create_task(func(*args, **kwargs))
                 await asyncio.sleep(period)
 
         return wrapper
