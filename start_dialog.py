@@ -1,8 +1,7 @@
-from PyQt6 import QtCore, QtWidgets, uic
-from PyQt6.QtCore import pyqtSignal, QPoint
+from PyQt5 import QtCore, QtWidgets, uic
+from PyQt5.QtCore import pyqtSignal, QPoint
 
 from utils import resource_path
-from video_player import MediaPlayer
 
 
 class StartDialog(QtWidgets.QDialog):

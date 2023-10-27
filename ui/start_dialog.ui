@@ -54,6 +54,7 @@
    <property name="font">
     <font>
      <pointsize>10</pointsize>
+     <weight>75</weight>
      <bold>true</bold>
      <kerning>true</kerning>
     </font>
@@ -81,6 +82,7 @@ color: rgb(255, 255, 255);</string>
    <property name="font">
     <font>
      <pointsize>10</pointsize>
+     <weight>75</weight>
      <bold>true</bold>
      <underline>false</underline>
      <strikeout>false</strikeout>
@@ -111,12 +113,15 @@ color: rgb(255, 255, 255);</string>
    </property>
    <property name="font">
     <font>
-     <pointsize>16</pointsize>
+     <pointsize>14</pointsize>
      <kerning>true</kerning>
     </font>
    </property>
    <property name="text">
     <string>Начать производственную гимнастику?</string>
+   </property>
+   <property name="textFormat">
+    <enum>Qt::PlainText</enum>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>

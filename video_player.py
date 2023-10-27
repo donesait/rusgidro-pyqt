@@ -1,16 +1,14 @@
-from PyQt6.QtCore import QUrl, Qt, QSize
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtWidgets import QPushButton, QSlider, QVBoxLayout, QWidget, QHBoxLayout, QStyle
+from PyQt5.QtCore import Qt, QSize, QUrl
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtWidgets import QPushButton, QSlider, QVBoxLayout, QWidget, QHBoxLayout, QStyle
 
 
 class MediaPlayer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.is_started = False
-        self.mediaPlayer = QMediaPlayer()
-        self.audio_output = QAudioOutput()
+        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
 
         btn_size = QSize(16, 16)
         video_widget = QVideoWidget()
@@ -41,22 +39,20 @@ class MediaPlayer(QWidget):
         self.setLayout(layout)
 
         self.mediaPlayer.setVideoOutput(video_widget)
-        self.mediaPlayer.setAudioOutput(self.audio_output)
-        self.mediaPlayer.playbackStateChanged.connect(self.media_state_changed)
+        self.mediaPlayer.mediaStatusChanged.connect(self.media_status_changed)
+        self.mediaPlayer.stateChanged.connect(self.media_state_changed)
         self.mediaPlayer.positionChanged.connect(self.position_changed)
         self.mediaPlayer.durationChanged.connect(self.duration_changed)
-        self.mediaPlayer.errorChanged.connect(self.handle_error)
 
     def new_video(self, video_path):
         print(f'new video {video_path}')
         self.mediaPlayer.stop()
-        self.mediaPlayer.setSource(QUrl.fromLocalFile(video_path))
+        self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
         self.play_button.setEnabled(True)
         self.play()
-        self.is_started = True
 
     def play(self):
-        if self.mediaPlayer.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
         else:
             self.mediaPlayer.play()
@@ -64,18 +60,18 @@ class MediaPlayer(QWidget):
     def stop(self):
         self.mediaPlayer.stop()
 
+    def media_status_changed(self, status):
+        if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+            print('end reached')
+            self.parent.close()
+
     def media_state_changed(self, state):
-        if self.mediaPlayer.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.play_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
         else:
             self.play_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
-
-        if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia and self.is_started:
-            print('end reached')
-            self.is_started = False
-            self.parent.hide_stop()
 
     def position_changed(self, position):
         self.position_slider.setValue(position)
@@ -85,6 +81,3 @@ class MediaPlayer(QWidget):
 
     def set_position(self, position):
         self.mediaPlayer.setPosition(position)
-
-    def handle_error(self):
-        self.play_button.setEnabled(False)

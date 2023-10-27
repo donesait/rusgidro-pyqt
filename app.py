@@ -3,15 +3,15 @@ import os
 import sys
 from typing import Optional, Dict, List
 
-from PyQt6 import QtGui
+from PyQt5 import QtGui
 
 from schedule import VideoSchedule
 from datetime import datetime, timedelta
 
 from qasync import QEventLoop, asyncSlot
-from PyQt6.QtCore import QTimer, QSize
-from PyQt6.QtGui import QResizeEvent, QIcon
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import QTimer, QSize
+from PyQt5.QtGui import QResizeEvent, QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from dto import Training
 from start_dialog import StartDialog
@@ -21,7 +21,6 @@ from videos import Videos
 
 
 @asyncSlot()
-@periodic(5 * 60)
 async def periodic_update_schedule(window):
     print('update schedule')
     schedule_task = window.loop.run_in_executor(None, VideoSchedule.update_data)
@@ -30,7 +29,6 @@ async def periodic_update_schedule(window):
 
 
 @asyncSlot()
-@periodic(20 * 60)
 async def periodic_download_videos(window):
     print('download_videos')
     download_task = window.loop.run_in_executor(None, Videos.download_all)
@@ -39,7 +37,7 @@ async def periodic_download_videos(window):
 
 
 class MainWindow(QMainWindow):
-    minimum_show_interval = timedelta(minutes=0)
+    minimum_show_interval = timedelta(minutes=2)
     last_show_time = None
 
     def __init__(self, loop=None):
@@ -68,15 +66,15 @@ class MainWindow(QMainWindow):
         timer.start(10 * 1000)
         self.loop = loop or asyncio.get_event_loop()
 
-        self.loop.run_until_complete(self.pass_context(periodic_update_schedule))
+        self.loop.run_until_complete(periodic(5 * 60, self.loop)(self.pass_context)(periodic_update_schedule))
 
-        self.loop.run_until_complete(self.pass_context(periodic_download_videos))
+        self.loop.run_until_complete(periodic(20 * 60, self.loop)(self.pass_context)(periodic_download_videos))
 
     def closeEvent(self, event: QtGui.QCloseEvent):
-        self.hide_stop()
+        self.close()
         event.ignore()
 
-    def hide_stop(self):
+    def close(self):
         self.player.stop()
         self.hide()
         self.window_opened = False
@@ -121,13 +119,12 @@ class MainWindow(QMainWindow):
         if self.schedule:
             current_time = datetime.now().strftime('%H:%M')
             day_of_week = datetime.now().weekday()
+            print(day_of_week)
+            print(current_time)
             trainings = self.schedule.get(day_of_week, [])
             if len(trainings) != 0:
                 training: Optional[Training] = next(
                     iter(list(filter(lambda t: t.Time == current_time, trainings))), None)
-                tr = Training()
-                tr.VideoID = 6
-                training = tr
                 if training:
                     if Videos.downloaded_video.get(training.VideoID):
                         return training
