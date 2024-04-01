@@ -36,3 +36,4 @@ pip install -r .\requirements.txt
 ```
 pyinstaller .\health.spec
 ```
+open the app 'health.exe 'via the 'dist' folder.
