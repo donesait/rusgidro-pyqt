@@ -34,6 +34,6 @@ pip install pyinstaller
 pip install -r .\requirements.txt
 ```
 ```
-pyinstaller .\health.spec
+pyinstaller .\app.py
 ```
 open the app 'health.exe 'via the 'dist' folder.
